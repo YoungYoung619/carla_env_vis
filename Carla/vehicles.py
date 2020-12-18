@@ -16,13 +16,8 @@ import random
 __all__ = ['']
 
 class BaseVehicle():
-    def __init__(self, role_name:str, filter:str):
+    def __init__(self, **kwargs):
         """初始化"""
-        self.player = None
-        self.player_max_speed = 1.589
-        self.player_max_speed_fast = 3.713
-        self._actor_filter = filter
-        self.role_name = role_name
         pass
 
     def spwan_at(self, world, spawn_point):
@@ -57,7 +52,12 @@ class BaseVehicle():
 
 class TeslaModel3(BaseVehicle):
     def __init__(self, role_name:str):
-        BaseVehicle.__init__(self, role_name, "vehicle.tesla.model3")
+        BaseVehicle.__init__(self)
+        self.player = None
+        self.player_max_speed = 1.589
+        self.player_max_speed_fast = 3.713
+        self._actor_filter = "vehicle.tesla.model3"
+        self.role_name = role_name
 
     def state(self):
         """默认返回位姿和位姿变化"""
