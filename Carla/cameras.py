@@ -25,6 +25,8 @@ import time
 
 from threading import Thread, Lock
 
+__all__ = ['CameraDecarator']
+
 @unique
 class CameraType(Enum):
     RAW_RGB = 0
@@ -223,8 +225,71 @@ class CameraManager(object):
         #     cv2.waitKey(1)
         self.data_ready = True
 
+class CoordTransform():
+    """坐标转换工具，相机到像素坐标转换，世界坐标到像素转换"""
+    def __init__(self, K:np.ndarray):
+        """init
+        Args:
+            K: 相机内参矩阵，[a  -alpha*cot(theta)  Cx
+                            0  belta/sin(theta)     Cy
+                            0       0           1]
+        """
+        self.K = K
+
+    def camera2pixel(self, point:np.ndarray):
+        """camera coordinate to pixel coordinate
+        Args:
+            point: denotes the x y z in camera coordinate, shape shoule be (n, 3)
+        Return:
+            point: denotes the x y in pixel coordinate
+            P_p_h = K [I O] P_c_h（后缀h表示齐次坐标）, 简化后为P_p_h = matmul(K, P_c)
+        """
+        # I_O_matrix = np.concatenate([np.eye(3), np.zeros((3, 1))], axis=-1)
+        assert point.shape[-1] == 3
+
+        if len(point.shape) > 1:    ## 支持多点转换
+            point  = np.swapaxes(point, axis1=1, axis2=0)
+
+        p_p_h = np.matmul(self.K, point)
+
+        if len(point.shape) > 1:
+            p_p_h = np.swapaxes(p_p_h, axis1=1, axis2=0)
+            ## 齐次转欧拉坐标
+            p_p_h[:, 0] = p_p_h[:, 0] / p_p_h[:, 2]
+            p_p_h[:, 1] = p_p_h[:, 1] / p_p_h[:, 2]
+            return p_p_h[:, :2]
+        else:
+            return np.array([p_p_h[0]/p_p_h[2], p_p_h[1]/p_p_h[2]])
+
+
 if __name__ == '__main__':
 
 
-    tesla = TeslaModel3(role_name='role1')
-    tesla = CameraDecarator(tesla)
+    # tesla = TeslaModel3(role_name='role1')
+    # tesla = CameraDecarator(tesla)
+    I_O_matrix = np.concatenate([np.eye(3), np.zeros((3, 1))], axis=-1)
+    K = np.eye(3)
+    # # print(I_O_matrix)
+    #
+    ## single point
+    # point_h = np.array([99, 92, 29, 1])
+    # point = np.array([99, 92, 29])
+    # print(np.matmul(np.matmul(K, I_O_matrix), point_h)) ==> [99. 92. 29.]
+    # print(np.matmul(K, point)) ==> [99. 92. 29.]
+
+    ## 多点测试
+    point_h = np.array([[99, 92, 29, 1], [23, 11, 29, 1], [46, 11, 34, 1],[46, 11, 2, 1], [1, 11, 34, 1]])
+    point = np.array([[99, 92, 29], [23, 11, 29], [46, 11, 34], [46, 11, 2], [1, 11, 34]])
+    a = point
+    point_h = np.swapaxes(point_h, axis1=1, axis2=0)
+    point = np.swapaxes(point, axis1=1, axis2=0)
+    print(np.matmul(np.matmul(K, I_O_matrix), point_h))
+    print(np.matmul(K, point))
+    # pass
+
+    ## 类测试
+    coord_transform = CoordTransform(K)
+    # print(coord_transform.camera2pixel(point=np.array([[99], [92], [29]])))
+    print(coord_transform.camera2pixel(point=np.array([99, 92, 29])))
+    print(coord_transform.camera2pixel(point=np.array([[99, 92, 29]])))
+    print(coord_transform.camera2pixel(point=np.array([[99, 92, 29], [23, 11, 29], [46, 11, 34], [46, 11, 2], [1, 11, 34]])))
